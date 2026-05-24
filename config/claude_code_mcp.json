@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "blender-print-studio": {
+      "command": "uv",
+      "args": ["run", "blender-print-studio"],
+      "env": {
+        "BLENDER_HOST": "localhost",
+        "BLENDER_PORT": "9876"
+      }
+    }
+  }
+}

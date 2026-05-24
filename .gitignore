@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Project output (STLs exported by the tools)
+output/
+*.stl
+
+# Logs
+*.log
+
+# Keep uv.lock — it's intentionally tracked for reproducible builds.
+!uv.lock
