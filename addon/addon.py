@@ -9,7 +9,110 @@ import json
 import threading
 import socket
 import time
-import requests
+# ---------------------------------------------------------------------------
+# requests compatibility shim — Blender 5.x does not bundle the requests
+# library. This drop-in replacement covers every usage in this addon using
+# only Python's standard library (urllib). If requests IS available it is
+# used instead so behaviour is identical on older Blender versions.
+# ---------------------------------------------------------------------------
+try:
+    import requests
+except ImportError:
+    import urllib.request as _urllib_req
+    import urllib.parse as _urllib_parse
+    import urllib.error as _urllib_err
+    import json as _shim_json
+
+    class _Response:
+        def __init__(self, http_response, content: bytes):
+            self.status_code: int = http_response.status
+            self.headers: dict = dict(http_response.headers)
+            self.content: bytes = content
+            self.text: str = content.decode("utf-8", errors="replace")
+
+        def json(self):
+            return _shim_json.loads(self.text)
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise IOError(f"HTTP {self.status_code}")
+
+        def iter_content(self, chunk_size=8192):
+            size = chunk_size or len(self.content) or 1
+            for i in range(0, len(self.content), size):
+                yield self.content[i : i + size]
+
+    def _do_request(url, method="GET", params=None, headers=None,
+                    json_body=None, data=None, files=None, timeout=30):
+        if params:
+            url = url + "?" + _urllib_parse.urlencode(params)
+        req_headers = dict(headers or {})
+        body = None
+        if json_body is not None:
+            body = _shim_json.dumps(json_body).encode("utf-8")
+            req_headers.setdefault("Content-Type", "application/json")
+        elif data is not None:
+            body = (_urllib_parse.urlencode(data).encode("utf-8")
+                    if isinstance(data, dict) else data)
+        elif files is not None:
+            # Minimal multipart/form-data encoding for file uploads
+            boundary = "----BlenderMCPBoundary8675309"
+            parts = []
+            for field_name, file_info in files.items():
+                fname, fobj, mime = (
+                    (file_info[0], file_info[1], file_info[2])
+                    if len(file_info) >= 3
+                    else (file_info[0], file_info[1], "application/octet-stream")
+                )
+                file_bytes = fobj if isinstance(fobj, bytes) else fobj.read()
+                parts.append(
+                    f'--{boundary}\r\nContent-Disposition: form-data; '
+                    f'name="{field_name}"; filename="{fname}"\r\n'
+                    f'Content-Type: {mime}\r\n\r\n'.encode() + file_bytes + b'\r\n'
+                )
+            body = b"".join(parts) + f"--{boundary}--\r\n".encode()
+            req_headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
+        req = _urllib_req.Request(url, data=body, headers=req_headers, method=method)
+        try:
+            with _urllib_req.urlopen(req, timeout=timeout) as resp:
+                return _Response(resp, resp.read())
+        except _urllib_err.URLError as exc:
+            if "timed out" in str(exc).lower():
+                raise _RequestsTimeout(str(exc)) from exc
+            raise
+
+    class _RequestsTimeout(Exception):
+        pass
+
+    class _Exceptions:
+        Timeout = _RequestsTimeout
+        RequestException = IOError
+
+    class _Utils:
+        @staticmethod
+        def default_headers():
+            return {
+                "User-Agent": "python-urllib",
+                "Accept-Encoding": "gzip, deflate",
+                "Accept": "*/*",
+                "Connection": "keep-alive",
+            }
+
+    class _RequestsModule:
+        exceptions = _Exceptions()
+        utils = _Utils()
+
+        def get(self, url, params=None, headers=None, timeout=30, stream=False, **kw):
+            return _do_request(url, "GET", params=params, headers=headers,
+                               timeout=timeout)
+
+        def post(self, url, json=None, data=None, headers=None, timeout=30,
+                 files=None, **kw):
+            return _do_request(url, "POST", headers=headers, json_body=json,
+                               data=data, files=files, timeout=timeout)
+
+    requests = _RequestsModule()
+# ---------------------------------------------------------------------------
 import tempfile
 import traceback
 import os
