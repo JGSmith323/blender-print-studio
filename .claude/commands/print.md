@@ -71,15 +71,17 @@ Once the shape looks good, run this sequence:
 6. `set_print_origin` — seat the object flat on Z=0
 
 ### Export
-Call `export_stl` with a sensible path, e.g.:
+Call `export_stl` with the path:
 ```
-/mnt/c/Users/GarrettSmith/Desktop/<descriptive_name>.stl
+/mnt/c/Users/GarrettSmith/OneDrive - Guerrilla RF/Desktop/3D Printing/<descriptive_name>.stl
 ```
 
+Use a clear, lowercase, hyphenated filename based on what was designed (e.g. `cable-clip-6mm.stl`, `pi4-wall-mount.stl`, `kobra-spool-holder.stl`).
+
 Then tell the user:
-> ✅ **STL exported to your Desktop: `<filename>.stl`**
+> ✅ **STL saved to your 3D Printing folder: `<filename>.stl`**
 > 
-> Ready to slice in OrcaSlicer / Bambu Studio. Select your Kobra S1 Combo profile and you're good to go.
+> Ready to slice — open OrcaSlicer or AnycubicSlicer, select your Kobra S1 Combo profile, and import the file.
 >
 > Want me to adjust anything — size, add a feature, change the design?
 
